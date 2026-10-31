@@ -1,0 +1,39 @@
+﻿<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Чат-кімната</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div id="loginBlock">
+            <h2>Вхід до чату</h2>
+            <div class="flex-group">
+                <input id="txtUserName" type="text" class="form-control" placeholder="Введіть логін..." />
+                <button id="btnLogin" class="btn">Увійти</button>
+            </div>
+        </div>
+
+        <div id="chatBody">
+            <div id="header"></div>
+            <div id="chatroom"></div>
+            <div class="flex-group">
+                <input type="text" id="message" class="form-control" placeholder="Ваше повідомлення..." />
+                <button id="sendmessage" class="btn">Надіслати</button>
+            </div>
+
+            <div>
+                <p><b>Всі користувачі онлайн:</b></p>
+                <ul id="chatusers" class="users-list"></ul>
+            </div>
+        </div>
+
+        <input id="hdId" type="hidden" />
+        <input id="username" type="hidden" />
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

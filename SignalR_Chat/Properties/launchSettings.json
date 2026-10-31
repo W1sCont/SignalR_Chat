@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "SignalR_Chat": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:58528;http://localhost:58529"
+    }
+  }
+}
