@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using EFCore = Microsoft.EntityFrameworkCore.EF;
 using SignalR_Chat.EF;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using EFCore = Microsoft.EntityFrameworkCore.EF;
 
 namespace SignalR_Chat.Repository
 {
@@ -16,10 +17,10 @@ namespace SignalR_Chat.Repository
             await _context.Set<T>().AsNoTracking().ToListAsync();
 
         public async Task<User?> GetByLoginAsync(string UserName) =>
-            await _context.Set<User>().AsNoTracking().FirstOrDefaultAsync(e => e.Login == UserName);
+            await _context.Set<User>().FirstOrDefaultAsync(e => e.Login == UserName);
 
-        public async Task<T?> GetByIdAsync(string ConnectionId) =>
-            await _context.Set<T>().AsNoTracking().FirstOrDefaultAsync(e => EFCore.Property<string>(e, "ConnectionId") == ConnectionId);
+        public async Task<User?> GetByIdAsync(string ConnectionId) =>
+            await _context.Set<User>().FirstOrDefaultAsync(u => (u.ConnectionId) == ConnectionId);
         public async Task AddAsync(T entity)
         {
             await _context.Set<T>().AddAsync(entity);
@@ -38,6 +39,16 @@ namespace SignalR_Chat.Repository
         public async Task SaveAll()
         {
             await _context.SaveChangesAsync();
+        }
+        public async Task<IEnumerable<Message>> GetLatestMessagesAsync(int count = 10)
+        {
+            return await _context.Messages
+                .Include(m => m.User)
+                .OrderByDescending(m => m.CreatedAt)
+                .Take(count)
+                .OrderBy(m => m.CreatedAt) 
+                .AsNoTracking()
+                .ToListAsync();
         }
     }
 }

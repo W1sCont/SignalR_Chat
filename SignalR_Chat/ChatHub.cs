@@ -24,42 +24,63 @@ public class ChatHub(IRepository<Message> repoMessage, IRepository<User> repoUse
             Message newMessage = new Message()
             {
                 MesaageText = message,
+                CreatedAt = DateTime.Now,
                 UserId = user.id
             };
             await repoMessage.AddAsync(newMessage);
             await repoMessage.SaveAll();
 
             // Виклик методу AddMessage на всіх клієнтах
-            await Clients.All.SendAsync("AddMessage", username, message);
+            await Clients.All.SendAsync("AddMessage", username, message, DateTime.Now);
         }
     }
 
     // Підключення нового користувача
     public async Task Connect(string userName)
     {
-        var id = Context.ConnectionId;
-
-        User newUser = new User()
-        {
-            ConnectionId = id,
-            Login = userName
-        };
         try
         {
-            await repoUser.AddAsync(newUser);
-            await repoUser.SaveAll();
+            var id = Context.ConnectionId;
+            var existingUser = await repoUser.GetByLoginAsync(userName);
 
-            var allUsers = await repoUser.GetAllAsync();
+            User currentUser;
+
+            if (existingUser != null)
+            {
+                existingUser.ConnectionId = id;
+                existingUser.IsOnline = true;
+                await repoUser.UpdateAsync(existingUser);
+                await repoUser.SaveAll();
+                currentUser = existingUser;
+            }
+            else
+            {
+                currentUser = new User()
+                {
+                    ConnectionId = id,
+                    Login = userName,
+                    IsOnline = true
+                };
+                await repoUser.AddAsync(currentUser);
+                await repoUser.SaveAll();
+            }
+            var allUsers = (await repoUser.GetAllAsync())
+                .Where(u => u.IsOnline)
+                .Select(u => new { u.ConnectionId, u.Login, u.IsOnline });
+
+            var lastMessages = (await repoMessage.GetLatestMessagesAsync(10))
+                .Select(m => new { m.MesaageText, Username = m.User?.Login, Time = m.CreatedAt });
 
             // Виклик методу Connected лише на поточному клієнті, який звернувся до сервера
-            await Clients.Caller.SendAsync("Connected", newUser.ConnectionId, newUser.Login, allUsers);
-
+            await Clients.Caller.SendAsync("Connected", currentUser.ConnectionId, currentUser.Login, allUsers, lastMessages);
             // Виклик методу NewUserConnected на всіх клієнтах, окрім клієнта з певним id
-            await Clients.AllExcept(id).SendAsync("NewUserConnected", newUser.ConnectionId, newUser.Login);
+            await Clients.AllExcept(id).SendAsync("NewUserConnected", currentUser.ConnectionId, currentUser.Login);
+            return;
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            Console.WriteLine($"Error in Connect method: {ex.Message}");
+            throw;
         }
     }
 
@@ -69,9 +90,10 @@ public class ChatHub(IRepository<Message> repoMessage, IRepository<User> repoUse
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var user = await repoUser.GetByIdAsync(Context.ConnectionId);
-        if (user?.ConnectionId == Context.ConnectionId)
+        if (user != null)
         {
-            await repoUser.DeleteAsync(user);
+            user.IsOnline = false;
+            await repoUser.UpdateAsync(user);
             await repoUser.SaveAll();
 
             await Clients.All.SendAsync("UserDisconnected", Context.ConnectionId, user.Login);

@@ -3,36 +3,63 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Чат-кімната</title>
+    <title>PolyOmnia Chat</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
+        <!-- Блок авторизації -->
         <div id="loginBlock">
-            <h2>Вхід до чату</h2>
-            <div class="flex-group">
-                <input id="txtUserName" type="text" class="form-control" placeholder="Введіть логін..." />
-                <button id="btnLogin" class="btn">Увійти</button>
+            <div class="login-card">
+                <img src="logoa.png" alt="PolyOmnia Logo" class="brand-logo" />
+                <h2>PolyOmnia Chat</h2>
+                <p class="login-subtitle">One Universe. Infinite Stories.</p>
+                <div class="login-box">
+                    <input id="txtUserName" type="text" class="form-control" placeholder="Введіть ваш логін..." autocomplete="off" />
+                    <button id="btnLogin" class="btn">Увійти</button>
+                </div>
             </div>
         </div>
 
+        <!-- Головне вікно чату -->
         <div id="chatBody">
-            <div id="header"></div>
-            <div id="chatroom"></div>
-            <div class="flex-group">
-                <input type="text" id="message" class="form-control" placeholder="Ваше повідомлення..." />
-                <button id="sendmessage" class="btn">Надіслати</button>
+            <!-- Сайдбар користувачів -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <img src="logoa.png" alt="Logo" class="mini-logo" />
+                    <span>PolyOmnia</span>
+                </div>
+                <h4>Онлайн користувачі</h4>
+                <ul id="chatusers" class="users-list"></ul>
             </div>
 
-            <div>
-                <p><b>Всі користувачі онлайн:</b></p>
-                <ul id="chatusers" class="users-list"></ul>
+            <!-- Зона листування -->
+            <div class="main-chat">
+                <div id="header">
+                    <div id="headerTitle">Вітаємо у чаті!</div>
+                    <div class="status-badge"><span class="user-status"></span> Active Session</div>
+                </div>
+
+                <div id="chatroom">
+                    <!-- Початковий стан (Empty State) -->
+                    <div class="chat-placeholder" id="emptyState">
+                        <p>Наразі повідомлень немає. Напишіть першим!</p>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <input type="text" id="message" class="form-control" placeholder="Напишіть повідомлення..." autocomplete="off" />
+                    <button id="sendmessage" class="btn">
+                        <span>Надіслати</span>
+                    </button>
+                </div>
             </div>
         </div>
 
         <input id="hdId" type="hidden" />
         <input id="username" type="hidden" />
     </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.js"></script>
     <script src="script.js"></script>
 </body>

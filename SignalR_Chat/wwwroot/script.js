@@ -7,121 +7,136 @@
     const txtMessage = document.getElementById('message');
     const chatroom = document.getElementById('chatroom');
     const chatusers = document.getElementById('chatusers');
-    const header = document.getElementById('header');
+    const headerTitle = document.getElementById('headerTitle');
+    const emptyState = document.getElementById('emptyState');
     const hdId = document.getElementById('hdId');
     const hdUsername = document.getElementById('username');
 
-    /*
-    Для взаємодії з хабом ChatHub за допомогою методу build() об'єкта HubConnectionBuilder
-    створюється об'єкт hubConnection - об'єкт підключення.
-    Метод withUrl встановлює адресу, за якою програма буде звертатися до хабу.
-    Оскільки ChatHub на сервері зіставляється з адресою "/chat", то саме ця адреса і передається у withUrl.
-    */
     const hubConnection = new signalR.HubConnectionBuilder()
         .withUrl("/chat")
         .build();
 
-    /*
-    Якщо адреса сервера та адреса клієнта не збігатимуться, то знадобиться налаштувати підтримку CORS.
-    У цьому випадку серверна та клієнтська частини працюють у рамках одного застосунку, тому налаштування CORS не потрібне.
-    */
-
-    // Метод hubConnection.on встановлює функцію на боці клієнта,
-    // яка отримуватиме дані від сервера (хаба)
     hubConnection.on("AddMessage", (name, message) => {
-        // Додавання повідомлень на веб-сторінку
-        const msgElement = document.createElement('div');
-        msgElement.className = 'message';
-        msgElement.innerHTML = `<b>${htmlEncode(name)}</b>: <i>${htmlEncode(message)}</i>`;
-        chatroom.appendChild(msgElement);
-        chatroom.scrollTop = chatroom.scrollHeight;
+        AppendMessage(name, message);
+        scrollToBottomIfNear();
     });
 
-    // Функція, що викликається сервером під час підключення нового користувача
-    hubConnection.on("Connected", (id, userName, allUsers) => {
+    hubConnection.on("Connected", (id, userName, allUsers, lastMessages) => {
         loginBlock.style.display = 'none';
-        chatBody.style.display = 'block';
+        chatBody.style.display = 'grid';
 
-        // Встановлення у прихованих полях імені та id поточного користувача
         hdId.value = id;
         hdUsername.value = userName;
-        header.innerHTML = `<h3>Ласкаво просимо, ${htmlEncode(userName)}!</h3>`;
+        headerTitle.innerHTML = `Вітаємо, <b>${htmlEncode(userName)}</b>!`;
 
-        // Додавання всіх користувачів
         chatusers.innerHTML = '';
         allUsers.forEach(user => AddUser(user.connectionId, user.login));
+
+        if (lastMessages && lastMessages.length > 0) {
+            if (emptyState) emptyState.remove();
+            lastMessages.forEach(msg => {
+                AppendMessage(msg.username, msg.mesaageText, msg.time);
+            });
+            chatroom.scrollTop = chatroom.scrollHeight;
+        }
     });
 
-    // Функція, що викликається сервером для додавання нового користувача
     hubConnection.on("NewUserConnected", (id, name) => {
         AddUser(id, name);
     });
 
-    // Функція, що викликається сервером для видалення користувача
     hubConnection.on("UserDisconnected", (id, userName) => {
         const userElement = document.getElementById(id);
         if (userElement) userElement.remove();
     });
 
-    // Відкриваємо з'єднання із сервером.
-    // Якщо підключення до хабу успішно встановлено,
-    // то спрацює метод then, щоб виконати певні дії.
-    // Якщо ж у процесі підключення до сервера виникне помилка,
-    // то спрацює функція, яка передається в метод catch і яка отримає дані про помилку.
     hubConnection.start()
         .then(() => {
-            // відправлення повідомлення
-            btnSend.addEventListener('click', () => {
-                const msg = txtMessage.value.trim();
-                if (!msg) return;
-
-                // Викликаємо у хаба метод Send і передаємо йому дані.
-                // У разі, якщо під час відправлення виникне помилка,
-                // то спрацює функція, яка передається в метод catch().
-                hubConnection.invoke("Send", hdUsername.value, msg)
-                    .catch(err => console.error(err.toString()));
-                txtMessage.value = '';
-            });
+            btnSend.addEventListener('click', sendMessage);
 
             txtMessage.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') btnSend.click();
+                if (e.key === 'Enter') sendMessage();
             });
 
-            // обробка логіна
-            btnLogin.addEventListener('click', () => {
-                const name = txtUserName.value.trim();
-                if (name.length > 0) {
-                    // Викликаємо у хаба метод Connect і передаємо йому дані.
-                    // У разі, якщо під час відправлення виникне помилка,
-                    // то спрацює функція, яка передається в метод catch().
-                    hubConnection.invoke("Connect", name)
-                        .catch(err => console.error(err.toString()));
-                } else {
-                    alert("Будь ласка, введіть ім'я");
-                }
-            });
+            btnLogin.addEventListener('click', login);
 
             txtUserName.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') btnLogin.click();
+                if (e.key === 'Enter') login();
             });
         })
         .catch(err => console.error(err.toString()));
 
-    // Кодування тегів
+    function sendMessage() {
+        const msg = txtMessage.value.trim();
+        if (!msg) return;
+
+        hubConnection.invoke("Send", hdUsername.value, msg)
+            .catch(err => console.error(err.toString()));
+        txtMessage.value = '';
+        txtMessage.focus();
+    }
+
+    function login() {
+        const name = txtUserName.value.trim();
+        if (name.length > 0) {
+            hubConnection.invoke("Connect", name)
+                .catch(err => console.error(err.toString()));
+        } else {
+            alert("Будь ласка, введіть ім'я");
+        }
+    }
+
     function htmlEncode(value) {
         const div = document.createElement('div');
         div.textContent = value;
         return div.innerHTML;
     }
 
-    // Додавання нового користувача
+    function getInitials(name) {
+        return name ? name.substring(0, 2).toUpperCase() : '??';
+    }
+
     function AddUser(id, name) {
         const currentId = hdId.value;
         if (name && currentId !== id) {
             const li = document.createElement('li');
             li.id = id;
-            li.innerHTML = `<b>${htmlEncode(name)}</b>`;
+            li.innerHTML = `
+                <div class="user-avatar">${getInitials(name)}</div>
+                <div class="user-info">
+                    <span class="user-name">${htmlEncode(name)}</span>
+                </div>
+                <span class="user-status" style="margin-left: auto;"></span>
+            `;
             chatusers.appendChild(li);
+        }
+    }
+
+    function AppendMessage(name, message, time) {
+        if (document.getElementById('emptyState')) {
+            document.getElementById('emptyState').remove();
+        }
+
+        const isMyMessage = name === hdUsername.value;
+        const msgElement = document.createElement('div');
+        const timeStr = time ? new Date(time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        msgElement.className = `message ${isMyMessage ? 'my-message' : 'other-message'}`;
+
+        msgElement.innerHTML = `
+            ${!isMyMessage ? `<div class="message-sender">${htmlEncode(name)}</div>` : ''}
+            <div class="message-bubble">
+                ${htmlEncode(message)}
+                <span class="message-time">${timeStr}</span>
+            </div>
+        `;
+        chatroom.appendChild(msgElement);
+    }
+
+    function scrollToBottomIfNear() {
+        const threshold = 150;
+        const isNearBottom = chatroom.scrollHeight - chatroom.scrollTop - chatroom.clientHeight < threshold;
+        if (isNearBottom) {
+            chatroom.scrollTop = chatroom.scrollHeight;
         }
     }
 });
